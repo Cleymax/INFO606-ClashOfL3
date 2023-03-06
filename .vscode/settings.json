@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.yaml": "yaml",
+        "communcol3-tp.h": "c"
+    }
+}

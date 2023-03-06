@@ -11,6 +11,7 @@
 #include "clientCOL3.h"
 
 
+extern clan_client MONCLAN;
 
 /* ===================================
      fonction d'extraction des sites 
@@ -20,30 +21,55 @@
 void recupSiteExtraction()
 {
 	int socket;
-	int testOK = 0;
 
 	logClientCOL3(info,"testConnexionServeur", 
 		"le clan[%s] crée une socket pour tester le serveur",
 		MONCLAN.nomDuClan);
 	
-	/* creation et connexion au serveur de socket ( on met MSG_TEST à la place du TOKEN ) */
-	socket = connexionServeurCOL3(MONCLAN.adresseSrvCol3,MONCLAN.portTP1,MSG_TEST,MONCLAN.nomDuClan);
+	socket = connexionServeurCOL3(MONCLAN.adresseSrvCol3,MONCLAN.portTP1,MONCLAN.monToken,MONCLAN.nomDuClan);
 
 	/* si la socket est valide*/
 	if (socket != INVALID_SOCKET) {
 		logClientCOL3(info,"testConnexionServeur", 
 			"le clan[%s] a validé son test de connexion  %b ",
 			MONCLAN.nomDuClan,debug_ok); 
-		close(socket);
-		testOK=1;
 	} 	else {
 		logClientCOL3(error,"testConnexionServeur", 
 			"le clan[%s] n'a pas validé son test de connexion  %b ",
 			MONCLAN.nomDuClan,debug_nok); 
 	}
 
-	envoiMessageCOL3_s(socket, MONCLAN.monToken);
+	//concatenate MSG_SITE + MSG_DELIMITER  + MSG_QUEST
 
+	char* msg = malloc(strlen(MSG_SITE) + strlen(MSG_DELIMITER) + strlen(MSG_QUEST) + 1);
+	strcpy(msg, MSG_SITE);
+	strcat(msg, MSG_DELIMITER);
+	strcat(msg, MSG_QUEST);
+
+	//send message
+	if(envoiMessageCOL3_s(socket, msg) == -1) {
+		logClientCOL3(error,"testConnexionServeur", 
+			"le clan[%s] n'a pas pu envoyer %b ",
+			MONCLAN.nomDuClan,debug_nok);
+	}else {
+		logClientCOL3(info,"testConnexionServeur", 
+			"le clan[%s] a envoyé %b ",
+			MONCLAN.nomDuClan,debug_ok);
+	}
+
+	//receive message
+	if(lireStructureCOL3_s(socket, &MONCLAN.mesCapacites, sizeof(MONCLAN.mesCapacites))== -1){
+		logClientCOL3(error,"testConnexionServeur", 
+			"le clan[%s] n'a pas pu lire %b ",
+			MONCLAN.nomDuClan,debug_nok);
+	}else {
+		logClientCOL3(info,"testConnexionServeur", 
+			"le clan[%s] a lu %b ",
+			MONCLAN.nomDuClan,debug_ok);
+	}
+
+	afficheCapaciteDuClan(MONCLAN.mesCapacites);
+	close(socket);
 }
 
 
