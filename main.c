@@ -12,7 +12,7 @@ niveau_log NIVEAULOG=info;			// mode debug
 int NCURSE =0;						// affichage avec NCURSE
 
 clan_client MONCLAN;				// les données de mon clan
-
+hutte mahutte;
 
 /*  programme principal du client CoL3  */
 int main(int argc, char *argv[])
@@ -29,6 +29,8 @@ int main(int argc, char *argv[])
 	MONCLAN.portTP1 = 8081;
 	MONCLAN.portTP2 = 8082;
 	MONCLAN.portTP3 = 8083;
+	MONCLAN.maHutte = mahutte;
+	strcpy(mahutte.nomClanHutte, MONCLAN.nomDuClan);
     /* --- cette zone est à modifier à l'issue du jeu --- */
 
 	

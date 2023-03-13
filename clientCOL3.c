@@ -85,11 +85,24 @@ void recupSiteExtraction()
 	   (a completer)
   ==================================*/
 
+
+// struct params
+struct params
+{
+	char site[10];
+	int socket;
+};
 // fonction gestionChariot
 
-void gestionChariot(void *arg)
+void gestionChariot(void* arg)
 {
-	char *site = (char *)arg;
+	struct params p = *(struct params *)(arg);
+	char* site = p.site;
+
+	// print site
+	logClientCOL3(info, "gestionChariot", "site = %s", site);
+	
+
 	int socket;
 	logClientCOL3(info, "gestionChariot",
 				  "le clan[%s] crée une socket pour tester le serveur",
@@ -145,11 +158,11 @@ void gestionChariot(void *arg)
 					  "le clan[%s] a reçu MSG_CHARIOT_OK %b ",
 					  MONCLAN.nomDuClan, debug_ok);
 
-		logClientCOL3(info, "gestionAppo", "envoie de MSG_CHARIOT + MSG_DELIMITER + idSite[%d]", MONCLAN.mesCapacites.sitesAccessibles[0].idSite);
+		logClientCOL3(info, "gestionAppo", "envoie de MSG_CHARIOT + MSG_DELIMITER + idSite[%s]", site);
 		char msg[TAILLE_MAX_MSG];
 		strcpy(msg, MSG_CHARIOT);
 		strcat(msg, MSG_DELIMITER);
-		strcat(msg, &site );
+		strcat(msg, site);
 
 		// print msg
 		logClientCOL3(info, "gestionAppro",
@@ -174,7 +187,7 @@ void gestionChariot(void *arg)
 						"le clan[%s] a reçu apres tout: %s %b ",
 						MONCLAN.nomDuClan,&msgrecu, debug_ok);
 
-			if(strcmp(msgrecu, MSG_STOP)){
+			if(strcmp(msgrecu, MSG_STOP) == 0){
 				logClientCOL3(error, "gestionAppro2",
 					  "le clan[%s] a reçu MSG_STOP %b ",
 					  MONCLAN.nomDuClan, debug_nok);
@@ -183,6 +196,21 @@ void gestionChariot(void *arg)
 				logClientCOL3(info, "gestionAppro2",
 					  "le clan[%s] a reçu %s %b ",
 					  MONCLAN.nomDuClan,&msgrecu, debug_ok);
+
+				// char token;
+				// int matiere, quantite;
+				// token = strtok(msgrecu, ":");
+				// token = strtok(NULL, ":");
+				// matiere = atoi(token);
+
+				// token = strtok(NULL, ":");
+				// token = strtok(NULL, ":");
+				// quantite = atoi(token);
+
+				// printf("matiere: %d\n", matiere);
+				// printf("quantite: %d\n", quantite);
+
+				// MONCLAN.maHutte.stock[matiere] += quantite; 
 			}
 					
 		}
@@ -194,6 +222,7 @@ void gestionChariot(void *arg)
 	}
 	pthread_exit(NULL);
 }
+
 
 void gestionAppro()
 {
@@ -230,15 +259,16 @@ void gestionAppro()
 	pthread_t threadChariot[MONCLAN.mesCapacites.nbChariotDisponible];
 
 
+	struct params parameters[MONCLAN.mesCapacites.nbChariotDisponible];
+	parameters[0].socket = socket;
+	strcpy(parameters[0].site, "1");
+
+	parameters[1].socket = socket;
+	strcpy(parameters[1].site, "12");
+
 	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
 	{
-		char site[10];
-		// read input from user
-		printf("Enter a string: ");
-		scanf("%s", &site);
-
-
-		if(pthread_create(&threadChariot[i], NULL, gestionChariot, &site) == 0){
+		if(pthread_create(&threadChariot[i], NULL, gestionChariot, (void*) &parameters[i]) == 0){
 			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
 		}else {
 			logClientCOL3(error, "gestionAppro", "le clan[%s] n'a pas créé le thread %d", MONCLAN.nomDuClan, i);
