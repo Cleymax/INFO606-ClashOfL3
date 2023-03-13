@@ -89,8 +89,27 @@ void recupSiteExtraction()
 
 void gestionChariot(void *arg)
 {
-	int socket = (int)arg;
+	char *site = (char *)arg;
+	int socket;
+	logClientCOL3(info, "gestionChariot",
+				  "le clan[%s] crée une socket pour tester le serveur",
+				  MONCLAN.nomDuClan);
 
+	socket = connexionServeurCOL3(MONCLAN.adresseSrvCol3, MONCLAN.portTP1, MONCLAN.monToken, MONCLAN.nomDuClan);
+
+	/* si la socket est valide*/
+	if (socket != INVALID_SOCKET)
+	{
+		logClientCOL3(info, "gestionAppro",
+					  "le clan[%s] a validé son test de connexion  %b ",
+					  MONCLAN.nomDuClan, debug_ok);
+	}
+	else
+	{
+		logClientCOL3(error, "gestionAppro",
+					  "le clan[%s] n'a pas validé son test de connexion  %b ",
+					  MONCLAN.nomDuClan, debug_nok);
+	}
 
 	// concat MSG_CHARIOT + MSG_DELIMITER + MSG_QUEST
 
@@ -117,50 +136,63 @@ void gestionChariot(void *arg)
 
 	lireMessageCOL3_s(socket, msgrecu);
 
-	logClientCOL3(info, "gestionAppro",
-				  "le clan[%s] a reçu %s %b ",
+	logClientCOL3(info, "gestionAppro2",
+				  "le clan[%s] a reçu  en brut ==> '%s' %b ",
 				  MONCLAN.nomDuClan,&msgrecu, debug_ok);
 
-	if(strcmp(msgrecu, MSG_CHARIOT_OK)){
+	if(strcmp(msgrecu, "ROK") == 0){
 		logClientCOL3(info, "gestionAppro",
 					  "le clan[%s] a reçu MSG_CHARIOT_OK %b ",
 					  MONCLAN.nomDuClan, debug_ok);
 
-
-		char *msg = malloc(strlen(MSG_CHARIOT) + strlen(MSG_DELIMITER) + sizeof(int) + 1);
+		logClientCOL3(info, "gestionAppo", "envoie de MSG_CHARIOT + MSG_DELIMITER + idSite[%d]", MONCLAN.mesCapacites.sitesAccessibles[0].idSite);
+		char msg[TAILLE_MAX_MSG];
 		strcpy(msg, MSG_CHARIOT);
 		strcat(msg, MSG_DELIMITER);
-		strcat(msg, MONCLAN.mesCapacites.sitesAccessibles->idSite);
+		strcat(msg, &site );
 
-		if(envoiMessageCOL3_s(socket, msg)== -1){
-				logClientCOL3(error, "gestionAppro",
+		// print msg
+		logClientCOL3(info, "gestionAppro",
+					  "le clan[%s] envoie %s %b ",
+					  MONCLAN.nomDuClan, msg, debug_ok);
+		
+
+		if(envoiMessageCOL3_s(socket, &msg)== -1){
+				logClientCOL3(error, "gestionAppro2",
 					  "le clan[%s] n'a pas pu envoyer %b ",
 					  MONCLAN.nomDuClan, debug_nok);
 		}else {
 
-			char msgrecu2[TAILLE_MAX_MSG];
+			strcat(msgrecu, "");
+			int r = lireMessageCOL3_s(socket, msgrecu);
+			//print r
+			logClientCOL3(info, "gestionAppro2",
+						"le clan[%s] lit message return %d %b ",
+						MONCLAN.nomDuClan,r, debug_ok);
 
-			lireMessageCOL3_s(socket, msgrecu2);
+			logClientCOL3(info, "gestionAppro2",
+						"le clan[%s] a reçu apres tout: %s %b ",
+						MONCLAN.nomDuClan,&msgrecu, debug_ok);
 
-			logClientCOL3(info, "gestionAppro",
-						"le clan[%s] a reçu %s %b ",
-						MONCLAN.nomDuClan,&msgrecu2, debug_ok);
-
-			if(strcmp(msgrecu2, MSG_STOP)){
-				logClientCOL3(error, "gestionAppro",
+			if(strcmp(msgrecu, MSG_STOP)){
+				logClientCOL3(error, "gestionAppro2",
 					  "le clan[%s] a reçu MSG_STOP %b ",
 					  MONCLAN.nomDuClan, debug_nok);
 			}else {
-				
+				// tout good
+				logClientCOL3(info, "gestionAppro2",
+					  "le clan[%s] a reçu %s %b ",
+					  MONCLAN.nomDuClan,&msgrecu, debug_ok);
 			}
 					
 		}
 
 	}else {
-		logClientCOL3(error, "gestionAppro",
+		logClientCOL3(error, "gestionAppro2",
 					  "le clan[%s] a recu MSG_STOP %b ",
 					  MONCLAN.nomDuClan, debug_nok);
 	}
+	pthread_exit(NULL);
 }
 
 void gestionAppro()
@@ -192,13 +224,31 @@ void gestionAppro()
 					  MONCLAN.nomDuClan, debug_nok);
 	}
 
+	logClientCOL3(info, "gestionAppro", "le clan[%s] va envoyer %d chariots au serveur", MONCLAN.nomDuClan, MONCLAN.mesCapacites.nbChariotDisponible);
+
 	int i = 0;
 	pthread_t threadChariot[MONCLAN.mesCapacites.nbChariotDisponible];
 
+
 	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
 	{
-		pthread_create(&threadChariot, NULL, gestionChariot, (void *)socket);
+		char site[10];
+		// read input from user
+		printf("Enter a string: ");
+		scanf("%s", &site);
+
+
+		if(pthread_create(&threadChariot[i], NULL, gestionChariot, &site) == 0){
+			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
+		}else {
+			logClientCOL3(error, "gestionAppro", "le clan[%s] n'a pas créé le thread %d", MONCLAN.nomDuClan, i);
+		}
 	}
+
+	for(i = 0; i < 1; i++){
+		pthread_join(threadChariot[i], NULL);
+	}
+
 	close(socket);
 }
 
