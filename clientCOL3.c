@@ -197,20 +197,19 @@ void gestionChariot(void* arg)
 					  "le clan[%s] a reçu %s %b ",
 					  MONCLAN.nomDuClan,&msgrecu, debug_ok);
 
-				// char token;
-				// int matiere, quantite;
-				// token = strtok(msgrecu, ":");
-				// token = strtok(NULL, ":");
-				// matiere = atoi(token);
+				char token;
+				int matiere, quantite;
+				token = strtok(&msgrecu, ":");
+				token = strtok(NULL, ":");
+				matiere = atoi(token);
 
-				// token = strtok(NULL, ":");
-				// token = strtok(NULL, ":");
-				// quantite = atoi(token);
+				token = strtok(NULL, ":");
+				token = strtok(NULL, ":");
+				quantite = atoi(token);
 
-				// printf("matiere: %d\n", matiere);
-				// printf("quantite: %d\n", quantite);
+				printf("matiere: %d\n", matiere);
+				printf("quantite: %d\n", quantite);
 
-				// MONCLAN.maHutte.stock[matiere] += quantite; 
 			}
 					
 		}
