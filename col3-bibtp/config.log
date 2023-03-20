@@ -36,6 +36,7 @@ PATH: /usr/local/sbin/
 PATH: /usr/bin/
 PATH: /usr/sbin/
 PATH: /opt/idea-IU-223.8617.56/bin/
+PATH: /home/cperrin/.asdf/installs/krew/0.4.3/store/tree/v0.4.3/
 
 
 ## ----------- ##

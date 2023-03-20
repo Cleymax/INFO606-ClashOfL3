@@ -197,19 +197,23 @@ void gestionChariot(void* arg)
 					  "le clan[%s] a reçu %s %b ",
 					  MONCLAN.nomDuClan,&msgrecu, debug_ok);
 
-				char token;
-				int matiere, quantite;
-				token = strtok(&msgrecu, ":");
-				token = strtok(NULL, ":");
-				matiere = atoi(token);
+				int m,qt;
+				sscanf(&msgrecu, "MA:%d:QT:%d", &m, &qt);
 
-				token = strtok(NULL, ":");
-				token = strtok(NULL, ":");
-				quantite = atoi(token);
+				// char token;
+				// int matiere, quantite;
+				// token = strtok(&msgrecu, ":");
+				// token = strtok(NULL, ":");
+				// matiere = atoi(token);
 
-				printf("matiere: %d\n", matiere);
-				printf("quantite: %d\n", quantite);
+				// token = strtok(NULL, ":");
+				// token = strtok(NULL, ":");
+				// quantite = atoi(token);
 
+				printf("matiere: %d\n", m);
+				printf("quantite: %d\n", qt);
+
+				MONCLAN.maHutte.stock[m] += qt;
 			}
 					
 		}
@@ -222,11 +226,29 @@ void gestionChariot(void* arg)
 	pthread_exit(NULL);
 }
 
+void launch(pthread_t threadChariot[], struct params parameters[]){
+	int i;
+	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
+	{
+		if(pthread_create(&threadChariot[i], NULL, gestionChariot, (void*) &parameters[i]) == 0){
+			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
+		}else {
+			logClientCOL3(error, "gestionAppro", "le clan[%s] n'a pas créé le thread %d", MONCLAN.nomDuClan, i);
+		}
+	}
+
+	for(i = 0; i < 1; i++){
+		pthread_join(threadChariot[i], NULL);
+	}
+}
+
 
 void gestionAppro()
 {
 
 	printf("\n  *** au boulot ... ****\n");
+
+	MONCLAN.maHutte.tps_debut = time(NULL);
 
 	// gérer les approvisionnements, c'est à dire que vous envoyez autant de chariots que vous avez le droit avec un thread par chariot
 
@@ -258,25 +280,44 @@ void gestionAppro()
 	pthread_t threadChariot[MONCLAN.mesCapacites.nbChariotDisponible];
 
 
-	struct params parameters[MONCLAN.mesCapacites.nbChariotDisponible];
-	parameters[0].socket = socket;
-	strcpy(parameters[0].site, "1");
+	
 
-	parameters[1].socket = socket;
-	strcpy(parameters[1].site, "12");
+	int k = 0;
+	for(k = 0; k < 5; k++){
+		
+		char site[3];
+		printf("site: ");
+		scanf("%s", site);
 
-	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
+		struct params parameters[MONCLAN.mesCapacites.nbChariotDisponible];
+		parameters[0].socket = socket;
+		strcpy(parameters[0].site, site);
+
+		parameters[1].socket = socket;
+		strcpy(parameters[1].site, "12");
+		launch(threadChariot, parameters);
+	}
+
+	// save MONCLAN.mahute.stock in file
+	//delete stock.txt if exist
+	remove("stock.txt");
+
+	FILE *f = fopen("stock.txt", "w");
+	if (f == NULL)
 	{
-		if(pthread_create(&threadChariot[i], NULL, gestionChariot, (void*) &parameters[i]) == 0){
-			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
-		}else {
-			logClientCOL3(error, "gestionAppro", "le clan[%s] n'a pas créé le thread %d", MONCLAN.nomDuClan, i);
-		}
+		printf("Error opening file!\n");
+		exit(1);
 	}
 
-	for(i = 0; i < 1; i++){
-		pthread_join(threadChariot[i], NULL);
+	int j;
+	for (j = 1; j < 6; j++)
+	{
+		fprintf(f, "%d:%d\n",j, MONCLAN.maHutte.stock[j]);
 	}
+
+	logClientCOL3(info, "gestionAppro", "le clan[%s] a fini de travailler", MONCLAN.nomDuClan);
+
+	fclose(f);
 
 	close(socket);
 }
@@ -350,6 +391,21 @@ int estMenuValide(char menu[])
 void afficheMenuClient()
 {
 	char clavier[10];
+
+	// read stock.txt
+	FILE *f = fopen("stock.txt", "r");
+	if (f == NULL)
+	{
+		printf("Error opening file!\n");
+	}else {
+		int i;
+		for (i = 1; i < 6; i++)
+		{
+			fscanf(f, "%d:%d\n", &i, &MONCLAN.maHutte.stock[i]);
+		}
+		fclose(f);
+	}
+
 
 	do
 	{
