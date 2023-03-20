@@ -298,9 +298,6 @@ void gestionAppro()
 		launch(threadChariot, parameters);
 	}
 
-	// save MONCLAN.mahute.stock in file
-	//delete stock.txt if exist
-	remove("stock.txt");
 
 	FILE *f = fopen("stock.txt", "w");
 	if (f == NULL)

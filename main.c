@@ -24,7 +24,11 @@ int main(int argc, char *argv[])
 	
 	/* --- cette zone est à modifier à l'issue du jeu --- */
 	strcpy(MONCLAN.nomDuClan,"LesBranguignol"); 
-    strcpy(MONCLAN.monToken,"IC:45:NC:2:LS:1-10-18-11-4-17-3-7-12-13");	
+	char *env = getenv("TOKEN");
+	if (env != NULL) {
+		strcpy(MONCLAN.monToken,env);
+	}
+
 	strcpy(MONCLAN.adresseSrvCol3,"134.214.147.120");
 	MONCLAN.portTP1 = 8081;
 	MONCLAN.portTP2 = 8082;
