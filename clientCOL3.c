@@ -85,7 +85,6 @@ void recupSiteExtraction()
 	   (a completer)
   ==================================*/
 
-
 // struct params
 struct params
 {
@@ -94,14 +93,16 @@ struct params
 };
 // fonction gestionChariot
 
-void gestionChariot(void* arg)
+// create the mutex
+pthread_mutex_t mutex_stock;
+
+void gestionChariot(void *arg)
 {
 	struct params p = *(struct params *)(arg);
-	char* site = p.site;
+	char *site = p.site;
 
 	// print site
 	logClientCOL3(info, "gestionChariot", "site = %s", site);
-	
 
 	int socket;
 	logClientCOL3(info, "gestionChariot",
@@ -151,9 +152,10 @@ void gestionChariot(void* arg)
 
 	logClientCOL3(info, "gestionAppro2",
 				  "le clan[%s] a reçu  en brut ==> '%s' %b ",
-				  MONCLAN.nomDuClan,&msgrecu, debug_ok);
+				  MONCLAN.nomDuClan, &msgrecu, debug_ok);
 
-	if(strcmp(msgrecu, "ROK") == 0){
+	if (strcmp(msgrecu, "ROK") == 0)
+	{
 		logClientCOL3(info, "gestionAppro",
 					  "le clan[%s] a reçu MSG_CHARIOT_OK %b ",
 					  MONCLAN.nomDuClan, debug_ok);
@@ -168,36 +170,41 @@ void gestionChariot(void* arg)
 		logClientCOL3(info, "gestionAppro",
 					  "le clan[%s] envoie %s %b ",
 					  MONCLAN.nomDuClan, msg, debug_ok);
-		
 
-		if(envoiMessageCOL3_s(socket, &msg)== -1){
-				logClientCOL3(error, "gestionAppro2",
-					  "le clan[%s] n'a pas pu envoyer %b ",
-					  MONCLAN.nomDuClan, debug_nok);
-		}else {
+		if (envoiMessageCOL3_s(socket, &msg) == -1)
+		{
+			logClientCOL3(error, "gestionAppro2",
+						  "le clan[%s] n'a pas pu envoyer %b ",
+						  MONCLAN.nomDuClan, debug_nok);
+		}
+		else
+		{
 
 			strcat(msgrecu, "");
 			int r = lireMessageCOL3_s(socket, msgrecu);
-			//print r
+			// print r
 			logClientCOL3(info, "gestionAppro2",
-						"le clan[%s] lit message return %d %b ",
-						MONCLAN.nomDuClan,r, debug_ok);
+						  "le clan[%s] lit message return %d %b ",
+						  MONCLAN.nomDuClan, r, debug_ok);
 
 			logClientCOL3(info, "gestionAppro2",
-						"le clan[%s] a reçu apres tout: %s %b ",
-						MONCLAN.nomDuClan,&msgrecu, debug_ok);
+						  "le clan[%s] a reçu apres tout: %s %b ",
+						  MONCLAN.nomDuClan, &msgrecu, debug_ok);
 
-			if(strcmp(msgrecu, MSG_STOP) == 0){
+			if (strcmp(msgrecu, MSG_STOP) == 0)
+			{
 				logClientCOL3(error, "gestionAppro2",
-					  "le clan[%s] a reçu MSG_STOP %b ",
-					  MONCLAN.nomDuClan, debug_nok);
-			}else {
+							  "le clan[%s] a reçu MSG_STOP %b ",
+							  MONCLAN.nomDuClan, debug_nok);
+			}
+			else
+			{
 				// tout good
 				logClientCOL3(info, "gestionAppro2",
-					  "le clan[%s] a reçu %s %b ",
-					  MONCLAN.nomDuClan,&msgrecu, debug_ok);
+							  "le clan[%s] a reçu %s %b ",
+							  MONCLAN.nomDuClan, &msgrecu, debug_ok);
 
-				int m,qt;
+				int m, qt;
 				sscanf(&msgrecu, "MA:%d:QT:%d", &m, &qt);
 
 				// char token;
@@ -214,11 +221,36 @@ void gestionChariot(void* arg)
 				printf("quantite: %d\n", qt);
 
 				MONCLAN.maHutte.stock[m] += qt;
-			}
-					
-		}
 
-	}else {
+				// lock the mutex
+				pthread_mutex_lock(&mutex_stock);
+
+				// write to file
+
+				FILE *f = fopen("stock.txt", "w");
+				if (f == NULL)
+				{
+					printf("Error opening file!\n");
+					exit(1);
+				}
+
+				int j;
+				for (j = 1; j < 6; j++)
+				{
+					fprintf(f, "%d:%d\n", j, MONCLAN.maHutte.stock[j]);
+				}
+
+				logClientCOL3(info, "gestionAppro", "le clan[%s] a fini de travailler", MONCLAN.nomDuClan);
+
+				fclose(f);
+
+				// unlock the mutex
+				pthread_mutex_unlock(&mutex_stock);
+			}
+		}
+	}
+	else
+	{
 		logClientCOL3(error, "gestionAppro2",
 					  "le clan[%s] a recu MSG_STOP %b ",
 					  MONCLAN.nomDuClan, debug_nok);
@@ -226,22 +258,29 @@ void gestionChariot(void* arg)
 	pthread_exit(NULL);
 }
 
-void launch(pthread_t threadChariot[], struct params parameters[]){
+void launch(pthread_t threadChariot[], struct params parameters[])
+{
+	pthread_mutex_init(&mutex_stock, NULL);
 	int i;
 	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
 	{
-		if(pthread_create(&threadChariot[i], NULL, gestionChariot, (void*) &parameters[i]) == 0){
+		if (pthread_create(&threadChariot[i], NULL, gestionChariot, (void *)&parameters[i]) == 0)
+		{
 			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
-		}else {
+		}
+		else
+		{
 			logClientCOL3(error, "gestionAppro", "le clan[%s] n'a pas créé le thread %d", MONCLAN.nomDuClan, i);
 		}
 	}
 
-	for(i = 0; i < 1; i++){
+	for (i = 0; i < 1; i++)
+	{
 		pthread_join(threadChariot[i], NULL);
 	}
-}
 
+	pthread_mutex_destroy(&mutex_stock); 
+}
 
 void gestionAppro()
 {
@@ -279,12 +318,10 @@ void gestionAppro()
 	int i = 0;
 	pthread_t threadChariot[MONCLAN.mesCapacites.nbChariotDisponible];
 
-
-	
-
 	int k = 0;
-	for(k = 0; k < 5; k++){
-		
+	for (k = 0; k < 5; k++)
+	{
+
 		char site[3];
 		printf("site: ");
 		scanf("%s", site);
@@ -297,24 +334,6 @@ void gestionAppro()
 		strcpy(parameters[1].site, "12");
 		launch(threadChariot, parameters);
 	}
-
-
-	FILE *f = fopen("stock.txt", "w");
-	if (f == NULL)
-	{
-		printf("Error opening file!\n");
-		exit(1);
-	}
-
-	int j;
-	for (j = 1; j < 6; j++)
-	{
-		fprintf(f, "%d:%d\n",j, MONCLAN.maHutte.stock[j]);
-	}
-
-	logClientCOL3(info, "gestionAppro", "le clan[%s] a fini de travailler", MONCLAN.nomDuClan);
-
-	fclose(f);
 
 	close(socket);
 }
@@ -394,7 +413,9 @@ void afficheMenuClient()
 	if (f == NULL)
 	{
 		printf("Error opening file!\n");
-	}else {
+	}
+	else
+	{
 		int i;
 		for (i = 1; i < 6; i++)
 		{
@@ -402,7 +423,6 @@ void afficheMenuClient()
 		}
 		fclose(f);
 	}
-
 
 	do
 	{
