@@ -12,11 +12,6 @@
 
 extern clan_client MONCLAN;
 
-/* ===================================
-	 fonction d'extraction des sites
-	   (a completer)
-  ==================================*/
-
 void recupSiteExtraction()
 {
 	int socket;
@@ -25,6 +20,7 @@ void recupSiteExtraction()
 				  "le clan[%s] crée une socket pour tester le serveur",
 				  MONCLAN.nomDuClan);
 
+	// create socket
 	socket = connexionServeurCOL3(MONCLAN.adresseSrvCol3, MONCLAN.portTP1, MONCLAN.monToken, MONCLAN.nomDuClan);
 
 	/* si la socket est valide*/
@@ -42,7 +38,6 @@ void recupSiteExtraction()
 	}
 
 	// concatenate MSG_SITE + MSG_DELIMITER  + MSG_QUEST
-
 	char *msg = malloc(strlen(MSG_SITE) + strlen(MSG_DELIMITER) + strlen(MSG_QUEST) + 1);
 	strcpy(msg, MSG_SITE);
 	strcat(msg, MSG_DELIMITER);
@@ -76,28 +71,24 @@ void recupSiteExtraction()
 					  MONCLAN.nomDuClan, debug_ok);
 	}
 
+	// print site
 	afficheCapaciteDuClan(MONCLAN.mesCapacites);
 	close(socket);
 }
 
-/* ===================================
-	 fonction de recupération de MP
-	   (a completer)
-  ==================================*/
-
-// struct params
+// struct params for thread
 struct params
 {
 	char site[10];
 	int socket;
 };
-// fonction gestionChariot
 
-// create the mutex
+// create the mutex for stock file access
 pthread_mutex_t mutex_stock;
 
 void gestionChariot(void *arg)
 {
+	// get params from thread
 	struct params p = *(struct params *)(arg);
 	char *site = p.site;
 
@@ -109,6 +100,7 @@ void gestionChariot(void *arg)
 				  "le clan[%s] crée une socket pour tester le serveur",
 				  MONCLAN.nomDuClan);
 
+	// create socket
 	socket = connexionServeurCOL3(MONCLAN.adresseSrvCol3, MONCLAN.portTP1, MONCLAN.monToken, MONCLAN.nomDuClan);
 
 	/* si la socket est valide*/
@@ -126,7 +118,6 @@ void gestionChariot(void *arg)
 	}
 
 	// concat MSG_CHARIOT + MSG_DELIMITER + MSG_QUEST
-
 	char *msg = malloc(strlen(MSG_CHARIOT) + strlen(MSG_DELIMITER) + strlen(MSG_QUEST) + 1);
 	strcpy(msg, MSG_CHARIOT);
 	strcat(msg, MSG_DELIMITER);
@@ -146,20 +137,24 @@ void gestionChariot(void *arg)
 					  MONCLAN.nomDuClan, debug_ok);
 	}
 
+	// receive message
 	char msgrecu[TAILLE_MAX_MSG];
 
+	// read message
 	lireMessageCOL3_s(socket, msgrecu);
 
 	logClientCOL3(info, "gestionAppro2",
 				  "le clan[%s] a reçu  en brut ==> '%s' %b ",
 				  MONCLAN.nomDuClan, &msgrecu, debug_ok);
 
+	// if message is MSG_CHARIOT_OK
 	if (strcmp(msgrecu, "ROK") == 0)
 	{
 		logClientCOL3(info, "gestionAppro",
 					  "le clan[%s] a reçu MSG_CHARIOT_OK %b ",
 					  MONCLAN.nomDuClan, debug_ok);
 
+		// concat MSG_CHARIOT + MSG_DELIMITER + idSite
 		logClientCOL3(info, "gestionAppo", "envoie de MSG_CHARIOT + MSG_DELIMITER + idSite[%s]", site);
 		char msg[TAILLE_MAX_MSG];
 		strcpy(msg, MSG_CHARIOT);
@@ -179,7 +174,7 @@ void gestionChariot(void *arg)
 		}
 		else
 		{
-
+			// receive message
 			strcat(msgrecu, "");
 			int r = lireMessageCOL3_s(socket, msgrecu);
 			// print r
@@ -225,8 +220,7 @@ void gestionChariot(void *arg)
 				// lock the mutex
 				pthread_mutex_lock(&mutex_stock);
 
-				// write to file
-
+				// write to file (the database)
 				FILE *f = fopen("stock.txt", "w");
 				if (f == NULL)
 				{
@@ -242,9 +236,10 @@ void gestionChariot(void *arg)
 
 				logClientCOL3(info, "gestionAppro", "le clan[%s] a fini de travailler", MONCLAN.nomDuClan);
 
+				// close file
 				fclose(f);
 
-				// unlock the mutex
+				// unlock the mutex, so that other threads can access the mutex
 				pthread_mutex_unlock(&mutex_stock);
 			}
 		}
@@ -255,15 +250,19 @@ void gestionChariot(void *arg)
 					  "le clan[%s] a recu MSG_STOP %b ",
 					  MONCLAN.nomDuClan, debug_nok);
 	}
+
+	// close socket
 	pthread_exit(NULL);
 }
 
 void launch(pthread_t threadChariot[], struct params parameters[])
 {
+	// init mutex
 	pthread_mutex_init(&mutex_stock, NULL);
 	int i;
 	for (i = 0; i < MONCLAN.mesCapacites.nbChariotDisponible; i++)
 	{
+		// create thread
 		if (pthread_create(&threadChariot[i], NULL, gestionChariot, (void *)&parameters[i]) == 0)
 		{
 			logClientCOL3(info, "gestionAppro", "le clan[%s] a créé le thread %d", MONCLAN.nomDuClan, i);
@@ -276,9 +275,12 @@ void launch(pthread_t threadChariot[], struct params parameters[])
 
 	for (i = 0; i < 1; i++)
 	{
+		// join thread
 		pthread_join(threadChariot[i], NULL);
 	}
+	// wait for all threads to finish
 
+	// destroy mutex for stock file
 	pthread_mutex_destroy(&mutex_stock); 
 }
 
@@ -287,6 +289,7 @@ void gestionAppro()
 
 	printf("\n  *** au boulot ... ****\n");
 
+	// set tps_debut to current time
 	MONCLAN.maHutte.tps_debut = time(NULL);
 
 	// gérer les approvisionnements, c'est à dire que vous envoyez autant de chariots que vous avez le droit avec un thread par chariot
@@ -316,25 +319,30 @@ void gestionAppro()
 	logClientCOL3(info, "gestionAppro", "le clan[%s] va envoyer %d chariots au serveur", MONCLAN.nomDuClan, MONCLAN.mesCapacites.nbChariotDisponible);
 
 	int i = 0;
+	// create threads
 	pthread_t threadChariot[MONCLAN.mesCapacites.nbChariotDisponible];
 
+	// send 5 chariots
 	int k = 0;
 	for (k = 0; k < 5; k++)
 	{
-
+		// ask site to go from user input
 		char site[3];
 		printf("site: ");
 		scanf("%s", site);
 
+		// create parameters for thread
 		struct params parameters[MONCLAN.mesCapacites.nbChariotDisponible];
 		parameters[0].socket = socket;
 		strcpy(parameters[0].site, site);
 
 		parameters[1].socket = socket;
 		strcpy(parameters[1].site, "12");
+		// launch threads (chariot)
 		launch(threadChariot, parameters);
 	}
 
+	// close socket
 	close(socket);
 }
 
@@ -409,13 +417,16 @@ void afficheMenuClient()
 	char clavier[10];
 
 	// read stock.txt
+	// load stock from file, the database
 	FILE *f = fopen("stock.txt", "r");
 	if (f == NULL)
 	{
+		// database not exist
 		printf("Error opening file!\n");
 	}
 	else
 	{
+		// database exist so load it
 		int i;
 		for (i = 1; i < 6; i++)
 		{
@@ -451,6 +462,7 @@ void afficheMenuClient()
 								MONCLAN.nomDuClan);
 		else if (strcmp(clavier, "4") == 0)
 		{
+			// recuperation des sites pour les chariots
 			recupSiteExtraction(MONCLAN.adresseSrvCol3,
 								MONCLAN.portTP1,
 								MONCLAN.monToken,
